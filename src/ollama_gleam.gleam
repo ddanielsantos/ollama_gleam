@@ -1,5 +1,9 @@
 import gleam/io
 
-pub fn main() {
-  io.println("Hello from ollama_gleam!")
+fn call_ollama(path: String, options: String) {
+  "this was embedded"
+}
+
+pub fn embedding(input: String) {
+  call_ollama("embedding", input)
 }
