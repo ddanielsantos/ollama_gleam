@@ -4,6 +4,7 @@ version = "0.0.1"
 description = "A client for Ollama"
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "ddanielsantos", repo = "ollama_gleam" }
+gleam = ">= 0.32.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
