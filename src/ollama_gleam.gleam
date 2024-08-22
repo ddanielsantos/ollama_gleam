@@ -1,5 +1,5 @@
-import gleam/dynamic.{field, int, list, string, float, type Dynamic}
-import gleam/json.{type DecodeError, decode, object, string as jstring, array as jarr}
+import gleam/dynamic.{field, int, list, string, float}
+import gleam/json.{object, string as jstring, array as jarr}
 import gleam/http/request
 import gleam/httpc
 import gleam/result
@@ -19,18 +19,16 @@ fn get_ollama_url() -> String {
   "http://localhost:11434/api/"
 }
 
-pub fn call_ollama(path: String, input: String) -> Result(String, EmbeddingsError) {
+pub fn call_ollama(path: String, input: String) -> Result(String, OllamaError) {
   let assert Ok(base_req) = request.to(string.append(get_ollama_url(), path))
   let req = request.set_header(base_req, "Content-Type", "application/json")
   |> request.set_body(input)
 
-  use resp <- result.try(httpc.send(req))
-
-  // Ok(resp.body)
+  use resp <- result.try(httpc.send(req), fn(_) {Error(Comm)})
 
   case resp {
-    Ok(r) -> Ok(r)
-    Error(_) -> Error(OllamaComm)
+    Ok(r) -> Ok(r.body)
+    Error(_) -> Error(Comm)
   }
 }
 
@@ -52,6 +50,12 @@ fn get_decoder(embeddings_request: EmbeddingsRequest) {
   }
 }
 
+fn map_decoder(res: Result(t, json.DecodeError)) -> Result(t, OllamaError) {
+  result.map_error(res, fn(_) {
+    DecodingResp
+  })
+}
+
 fn encode_embed_request(input: EmbeddingsRequest) -> String {
   case input {
     MultipleInput(m, i) -> object([
@@ -65,17 +69,21 @@ fn encode_embed_request(input: EmbeddingsRequest) -> String {
   } |> json.to_string
 }
 
-pub type EmbeddingsError {
-  OllamaComm
+pub type OllamaError {
+  Comm
   DecodingResp
 }
 
-pub fn embedding(embeddings_request: EmbeddingsRequest) -> Result(EmbeddingsResponse, EmbeddingsError) {
+pub fn embedding(embeddings_request: EmbeddingsRequest) -> Result(EmbeddingsResponse, OllamaError) {
   let input = encode_embed_request(embeddings_request)
+  let resp = call_ollama("embed", input)
 
-  // call_ollama(path: "embed", input: input)
-  // |> result.map(fn(x) {""})
-  // |> result.map_error(fn(x) {DecodingResp})
-  //
-  todo
+  case resp {
+    Error(e) -> Error(e)
+    Ok(resp) -> {
+      let dec = get_decoder(embeddings_request)
+      let dec_resp = json.decode(resp, dec)
+      map_decoder(dec_resp)
+    }
+  }
 }
