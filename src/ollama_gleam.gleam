@@ -1,4 +1,4 @@
-import gleam/dynamic.{field, float, int, list, optional, string, optional_field}
+import gleam/dynamic.{field, float, int, list, optional, optional_field, string}
 import gleam/http
 import gleam/http/request
 import gleam/httpc
@@ -25,6 +25,9 @@ pub type EmbeddingsResponse {
 fn get_ollama_url() -> String {
   "http://localhost:11434/api/"
 }
+
+type OllamaCaller =
+  fn(String, String) -> Result(String, OllamaError)
 
 pub fn call_ollama(path: String, input: String) -> Result(String, OllamaError) {
   let assert Ok(base_req) = request.to(get_ollama_url() <> path)
@@ -77,14 +80,22 @@ pub type OllamaError {
   DecodingResp
 }
 
-pub fn embedding(
+fn embedding_internal(
   embeddings_request: EmbeddingsRequest,
+  ollama_caller: OllamaCaller,
 ) -> Result(EmbeddingsResponse, OllamaError) {
   encode_embed_request(embeddings_request)
-  |> call_ollama("embed", _)
+  |> ollama_caller("embed", _)
   |> result.try(fn(s) {
     get_decoder(embeddings_request)
     |> json.decode(s, _)
     |> map_decoder
   })
+}
+
+pub fn embedding(
+  embeddings_request: EmbeddingsRequest,
+) -> Result(EmbeddingsResponse, OllamaError) {
+  embeddings_request
+  |> embedding_internal(call_ollama)
 }
