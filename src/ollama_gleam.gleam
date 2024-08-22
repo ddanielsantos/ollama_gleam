@@ -30,6 +30,7 @@ pub fn call_ollama(path: String, input: String) -> Result(String, OllamaError) {
   let req =
     request.set_header(base_req, "Content-Type", "application/json")
     |> request.set_body(input)
+    |> request.set_method(http.Post)
 
   httpc.send(req)
   |> result.map_error(fn(_) { Comm })
