@@ -1,5 +1,4 @@
-import gleam/list
-import gleam/result.{try}
+import gleam/result
 import gleeunit
 import gleeunit/should
 import ollama_gleam
@@ -12,11 +11,11 @@ pub fn main() {
 pub fn hello_world_test() {
   let req =
     ollama_gleam.SingleInput("nomic-embed-text", "i want to see the sky")
-  use res <- result.try(ollama_gleam.embedding(req))
+  let response = ollama_gleam.embedding(req)
 
-  res.embeddings
-  |> list.is_empty
-  |> should.be_false
+  response
+  |> result.is_ok
+  |> should.be_true
 
-  Ok(res)
+  Ok(response)
 }
