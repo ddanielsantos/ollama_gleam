@@ -80,7 +80,7 @@ pub type OllamaError {
   DecodingResp
 }
 
-fn embedding_internal(
+pub fn embedding_internal_dont_use_or_youll_be_fired(
   embeddings_request: EmbeddingsRequest,
   ollama_caller: OllamaCaller,
 ) -> Result(EmbeddingsResponse, OllamaError) {
@@ -97,5 +97,5 @@ pub fn embedding(
   embeddings_request: EmbeddingsRequest,
 ) -> Result(EmbeddingsResponse, OllamaError) {
   embeddings_request
-  |> embedding_internal(call_ollama)
+  |> embedding_internal_dont_use_or_youll_be_fired(call_ollama)
 }
