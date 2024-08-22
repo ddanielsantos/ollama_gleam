@@ -1,9 +1,10 @@
-import gleam/dynamic.{field, float, int, list, string}
+import gleam/dynamic.{field, float, int, list, optional, string, optional_field}
+import gleam/http
 import gleam/http/request
 import gleam/httpc
 import gleam/json.{array as jarr, object, string as jstring}
+import gleam/option
 import gleam/result
-import gleam/string
 
 pub type EmbeddingsRequest {
   SingleInput(model: String, input: String)
@@ -14,9 +15,9 @@ pub type EmbeddingsResponse {
   SingleResponse(
     model: String,
     embeddings: List(List(Float)),
-    total_duration: Float,
-    load_duration: Float,
-    promp_eval_count: Int,
+    total_duration: Int,
+    load_duration: option.Option(Int),
+    prompt_eval_count: Int,
   )
   MultipleResponse(model: String, embeddings: List(List(Float)))
 }
@@ -50,9 +51,9 @@ fn get_decoder(embeddings_request: EmbeddingsRequest) {
         SingleResponse,
         field("model", of: string),
         field("embeddings", of: list(list(float))),
-        field("total_duration", of: float),
-        field("load_duration", of: float),
-        field("promp_eval_count", of: int),
+        field("total_duration", of: int),
+        optional_field("load_duration", of: int),
+        field("prompt_eval_count", of: int),
       )
   }
 }
