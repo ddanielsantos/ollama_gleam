@@ -1,9 +1,13 @@
-import gleam/dynamic.{field, int, list, string, float}
-import gleam/json.{type DecodeError, decode}
+import gleam/dynamic.{field, int, list, string, float, type Dynamic}
+import gleam/json.{type DecodeError, decode, object, string as jstring, array as jarr}
+import gleam/http/request
+import gleam/httpc
+import gleam/result
+import gleam/string
 
 pub type EmbeddingsRequest {
   SingleInput(model: String, input: String)
-  MultipleInput(model: String, input: String)
+  MultipleInput(model: String, input: List(String))
 }
 
 pub type EmbeddingsResponse {
@@ -11,8 +15,23 @@ pub type EmbeddingsResponse {
   MultipleResponse(model: String, embeddings: List(List(Float)))
 }
 
-pub fn call_ollama(path: String, options: String) {
-  "this was embedded"
+fn get_ollama_url() -> String {
+  "http://localhost:11434/api/"
+}
+
+pub fn call_ollama(path: String, input: String) -> Result(String, EmbeddingsError) {
+  let assert Ok(base_req) = request.to(string.append(get_ollama_url(), path))
+  let req = request.set_header(base_req, "Content-Type", "application/json")
+  |> request.set_body(input)
+
+  use resp <- result.try(httpc.send(req))
+
+  // Ok(resp.body)
+
+  case resp {
+    Ok(r) -> Ok(r)
+    Error(_) -> Error(OllamaComm)
+  }
 }
 
 fn get_decoder(embeddings_request: EmbeddingsRequest) {
@@ -33,10 +52,30 @@ fn get_decoder(embeddings_request: EmbeddingsRequest) {
   }
 }
 
-pub fn embedding(embeddings_request: EmbeddingsRequest) -> Result(EmbeddingsResponse, DecodeError) {
-  let decoder = get_decoder(embeddings_request)
+fn encode_embed_request(input: EmbeddingsRequest) -> String {
+  case input {
+    MultipleInput(m, i) -> object([
+      #("model", jstring(m)),
+      #("input", jarr(i,  of: jstring)),
+    ])
+    SingleInput(m, i) -> object([
+      #("model", jstring(m)),
+      #("input", jstring(i)),
+    ])
+  } |> json.to_string
+}
 
-  let result = ""
+pub type EmbeddingsError {
+  OllamaComm
+  DecodingResp
+}
 
-  decode(from: result, using: decoder)
+pub fn embedding(embeddings_request: EmbeddingsRequest) -> Result(EmbeddingsResponse, EmbeddingsError) {
+  let input = encode_embed_request(embeddings_request)
+
+  // call_ollama(path: "embed", input: input)
+  // |> result.map(fn(x) {""})
+  // |> result.map_error(fn(x) {DecodingResp})
+  //
+  todo
 }
