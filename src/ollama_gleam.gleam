@@ -1,4 +1,4 @@
-import gleam/dynamic.{field, float, int, list, optional, optional_field, string}
+import gleam/dynamic.{field, float, int, list, optional_field, string}
 import gleam/http
 import gleam/http/request
 import gleam/httpc
