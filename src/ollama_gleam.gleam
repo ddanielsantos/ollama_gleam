@@ -26,17 +26,14 @@ fn get_ollama_url() -> String {
 }
 
 pub fn call_ollama(path: String, input: String) -> Result(String, OllamaError) {
-  let assert Ok(base_req) = request.to(string.append(get_ollama_url(), path))
+  let assert Ok(base_req) = request.to(get_ollama_url() <> path)
   let req =
     request.set_header(base_req, "Content-Type", "application/json")
     |> request.set_body(input)
 
-  use resp <- result.try(httpc.send(req), fn(_) { Error(Comm) })
-
-  case resp {
-    Ok(r) -> Ok(r.body)
-    Error(_) -> Error(Comm)
-  }
+  httpc.send(req)
+  |> result.map_error(fn(_) { Comm })
+  |> result.map(fn(x) { x.body })
 }
 
 fn get_decoder(embeddings_request: EmbeddingsRequest) {
@@ -81,15 +78,11 @@ pub type OllamaError {
 pub fn embedding(
   embeddings_request: EmbeddingsRequest,
 ) -> Result(EmbeddingsResponse, OllamaError) {
-  let input = encode_embed_request(embeddings_request)
-  let resp = call_ollama("embed", input)
-
-  case resp {
-    Error(e) -> Error(e)
-    Ok(resp) -> {
-      let dec = get_decoder(embeddings_request)
-      let dec_resp = json.decode(resp, dec)
-      map_decoder(dec_resp)
-    }
-  }
+  encode_embed_request(embeddings_request)
+  |> call_ollama("embed", _)
+  |> result.try(fn(s) {
+    get_decoder(embeddings_request)
+    |> json.decode(s, _)
+    |> map_decoder
+  })
 }
