@@ -4,11 +4,6 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option
-import gleam/result
-
-pub type OllamaError {
-  DecodingResp
-}
 
 pub type EmbeddingsResponse {
   EmbeddingsResponse(
@@ -41,10 +36,9 @@ pub fn embeddings_request(model: String, input: List(String)) -> Request(String)
 
 pub fn handle_embeddings_response(
   response: Response(String),
-) -> Result(EmbeddingsResponse, OllamaError) {
+) -> Result(EmbeddingsResponse, json.DecodeError) {
   response.body
   |> json.decode(embeddings_response_decoder)
-  |> result.map_error(fn(_) { DecodingResp })
 }
 
 pub fn embeddings_response_decoder(
