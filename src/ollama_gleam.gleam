@@ -1,101 +1,61 @@
-import gleam/dynamic.{field, float, int, list, optional_field, string}
+import gleam/dynamic
 import gleam/http
-import gleam/http/request
-import gleam/httpc
-import gleam/json.{array as jarr, object, string as jstring}
+import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
+import gleam/json
 import gleam/option
 import gleam/result
 
-pub type EmbeddingsRequest {
-  SingleInput(model: String, input: String)
-  MultipleInput(model: String, input: List(String))
+pub type OllamaError {
+  DecodingResp
 }
 
 pub type EmbeddingsResponse {
-  SingleResponse(
+  EmbeddingsResponse(
     model: String,
     embeddings: List(List(Float)),
-    total_duration: Int,
+    total_duration: option.Option(Int),
     load_duration: option.Option(Int),
-    prompt_eval_count: Int,
+    prompt_eval_count: option.Option(Int),
   )
-  MultipleResponse(model: String, embeddings: List(List(Float)))
 }
 
 fn get_ollama_url() -> String {
   "http://localhost:11434/api/"
 }
 
-type OllamaCaller =
-  fn(String, String) -> Result(String, OllamaError)
+pub fn embeddings_request(model: String, input: List(String)) -> Request(String) {
+  let input =
+    json.object([
+      #("model", json.string(model)),
+      #("input", json.array(input, of: json.string)),
+    ])
+    |> json.to_string
 
-pub fn call_ollama(path: String, input: String) -> Result(String, OllamaError) {
-  let assert Ok(base_req) = request.to(get_ollama_url() <> path)
-  let req =
-    request.set_header(base_req, "Content-Type", "application/json")
-    |> request.set_body(input)
-    |> request.set_method(http.Post)
+  let assert Ok(base_req) = request.to(get_ollama_url() <> "embed")
 
-  httpc.send(req)
-  |> result.map_error(fn(_) { Comm })
-  |> result.map(fn(x) { x.body })
+  request.set_header(base_req, "Content-Type", "application/json")
+  |> request.set_body(input)
+  |> request.set_method(http.Post)
 }
 
-fn get_decoder(embeddings_request: EmbeddingsRequest) {
-  case embeddings_request {
-    MultipleInput(_, _) ->
-      dynamic.decode2(
-        MultipleResponse,
-        field("model", of: string),
-        field("embeddings", of: list(list(float))),
-      )
-    SingleInput(_, _) ->
-      dynamic.decode5(
-        SingleResponse,
-        field("model", of: string),
-        field("embeddings", of: list(list(float))),
-        field("total_duration", of: int),
-        optional_field("load_duration", of: int),
-        field("prompt_eval_count", of: int),
-      )
-  }
-}
-
-fn map_decoder(res: Result(t, json.DecodeError)) -> Result(t, OllamaError) {
-  result.map_error(res, fn(_) { DecodingResp })
-}
-
-fn encode_embed_request(input: EmbeddingsRequest) -> String {
-  case input {
-    MultipleInput(m, i) ->
-      object([#("model", jstring(m)), #("input", jarr(i, of: jstring))])
-    SingleInput(m, i) ->
-      object([#("model", jstring(m)), #("input", jstring(i))])
-  }
-  |> json.to_string
-}
-
-pub type OllamaError {
-  Comm
-  DecodingResp
-}
-
-pub fn embedding_internal_dont_use_or_youll_be_fired(
-  embeddings_request: EmbeddingsRequest,
-  ollama_caller: OllamaCaller,
+pub fn handle_embeddings_response(
+  response: Response(String),
 ) -> Result(EmbeddingsResponse, OllamaError) {
-  encode_embed_request(embeddings_request)
-  |> ollama_caller("embed", _)
-  |> result.try(fn(s) {
-    get_decoder(embeddings_request)
-    |> json.decode(s, _)
-    |> map_decoder
-  })
+  response.body
+  |> json.decode(embeddings_response_decoder)
+  |> result.map_error(fn(_) { DecodingResp })
 }
 
-pub fn embedding(
-  embeddings_request: EmbeddingsRequest,
-) -> Result(EmbeddingsResponse, OllamaError) {
-  embeddings_request
-  |> embedding_internal_dont_use_or_youll_be_fired(call_ollama)
+pub fn embeddings_response_decoder(
+  data: dynamic.Dynamic,
+) -> Result(EmbeddingsResponse, List(dynamic.DecodeError)) {
+  dynamic.decode5(
+    EmbeddingsResponse,
+    dynamic.field("model", dynamic.string),
+    dynamic.field("embeddings", dynamic.list(dynamic.list(dynamic.float))),
+    dynamic.optional_field("total_duration", dynamic.int),
+    dynamic.optional_field("load_duration", dynamic.int),
+    dynamic.optional_field("prompt_eval_count", dynamic.int),
+  )(data)
 }
