@@ -187,14 +187,8 @@ pub fn generate_request(request: GenerateRequest) -> Request(String) {
       #("images", json.nullable(request.images, of: json_list_string)),
       #("format", json.nullable(request.format, of: json.string)),
       #("stream", json.nullable(request.stream, of: json.bool)),
-      #(
-        "keep_alive",
-        json.nullable(request.keep_alive, of: json.string),
-      ),
-      #(
-        "options",
-        json.nullable(request.options, of: json_ollama_options),
-      ),
+      #("keep_alive", json.nullable(request.keep_alive, of: json.string)),
+      #("options", json.nullable(request.options, of: json_ollama_options)),
     ])
     |> json.to_string
 
@@ -203,4 +197,21 @@ pub fn generate_request(request: GenerateRequest) -> Request(String) {
   request.set_header(base_req, "Content-Type", "application/json")
   |> request.set_body(input)
   |> request.set_method(http.Post)
+}
+
+pub type GenerateResponse {
+  GenerateResponse(
+    model: String,
+    created_at: String,
+    response: String,
+    done: Bool,
+    done_reason: String,
+    context: List(Int),
+    total_duration: Int,
+    load_duration: Int,
+    prompt_eval_count: Int,
+    prompt_eval_duration: Int,
+    eval_count: Int,
+    eval_duration: Int,
+  )
 }
