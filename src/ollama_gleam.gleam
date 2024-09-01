@@ -157,3 +157,20 @@ pub fn embeddings_response_decoder(
     dynamic.optional_field("prompt_eval_count", dynamic.int),
   )(data)
 }
+
+pub type GenerateRequest {
+  GenerateRequest(
+    model: String,
+    prompt: String,
+    suffix: option.Option(String),
+    images: option.Option(List(String)),
+    format: option.Option(String),
+    options: option.Option(OllamaOptions),
+    system: option.Option(String),
+    template: option.Option(String),
+    context: option.Option(List(Int)),
+    stream: option.Option(Bool),
+    raw: option.Option(Bool),
+    keep_alive: option.Option(String),
+  )
+}
