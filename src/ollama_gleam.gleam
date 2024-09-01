@@ -174,3 +174,33 @@ pub type GenerateRequest {
     keep_alive: option.Option(String),
   )
 }
+
+pub fn generate_request(request: GenerateRequest) -> Request(String) {
+  let input =
+    json.object([
+      #("model", json.string(request.model)),
+      #("prompt", json.string(request.prompt)),
+      #("suffix", json.nullable(request.suffix, of: json.string)),
+      #("system", json.nullable(request.system, of: json.string)),
+      #("template", json.nullable(request.template, of: json.string)),
+      #("raw", json.nullable(request.raw, of: json.bool)),
+      #("images", json.nullable(request.images, of: json_list_string)),
+      #("format", json.nullable(request.format, of: json.string)),
+      #("stream", json.nullable(request.stream, of: json.bool)),
+      #(
+        "keep_alive",
+        json.nullable(request.keep_alive, of: json.string),
+      ),
+      #(
+        "options",
+        json.nullable(request.options, of: json_ollama_options),
+      ),
+    ])
+    |> json.to_string
+
+  let assert Ok(base_req) = request.to(get_ollama_url() <> "generate")
+
+  request.set_header(base_req, "Content-Type", "application/json")
+  |> request.set_body(input)
+  |> request.set_method(http.Post)
+}
