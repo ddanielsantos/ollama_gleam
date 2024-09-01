@@ -3,6 +3,7 @@ import gleam/http
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
+import gleam/list
 import gleam/option
 
 fn get_ollama_url() -> String {
@@ -214,4 +215,77 @@ pub type GenerateResponse {
     eval_count: Int,
     eval_duration: Int,
   )
+}
+
+type GenerateResponse1 {
+  GenerateResponse1(
+    model: String,
+    created_at: String,
+    response: String,
+    done: Bool,
+    done_reason: String,
+    context: List(Int),
+    total_duration: Int,
+    load_duration: Int,
+    prompt_eval_count: Int,
+  )
+}
+
+type GenerateResponse2 {
+  GenerateResponse2(
+    prompt_eval_duration: Int,
+    eval_count: Int,
+    eval_duration: Int,
+  )
+}
+
+pub fn generate_response_decoder(
+  data: dynamic.Dynamic,
+) -> Result(GenerateResponse, List(dynamic.DecodeError)) {
+  // probably a dumb way of dealing with decoding9+
+  let res1 =
+    dynamic.decode9(
+      GenerateResponse1,
+      dynamic.field("model", dynamic.string),
+      dynamic.field("created_at", dynamic.string),
+      dynamic.field("response", dynamic.string),
+      dynamic.field("done", dynamic.bool),
+      dynamic.field("done_reason", dynamic.string),
+      dynamic.field("context", dynamic.list(dynamic.int)),
+      dynamic.field("total_duration", dynamic.int),
+      dynamic.field("load_duration", dynamic.int),
+      dynamic.field("prompt_eval_count", dynamic.int),
+    )(data)
+
+  let res2 =
+    dynamic.decode3(
+      GenerateResponse2,
+      dynamic.field("prompt_eval_duration", dynamic.int),
+      dynamic.field("eval_count", dynamic.int),
+      dynamic.field("eval_duration", dynamic.int),
+    )(data)
+
+  case res1, res2 {
+    Ok(_), Error(res2) -> Error(res2)
+    Error(res1), Ok(_) -> Error(res1)
+    Error(res1), Error(res2) -> {
+      Error(list.append(res1, res2))
+    }
+    Ok(a), Ok(b) -> {
+      Ok(GenerateResponse(
+        a.model,
+        a.created_at,
+        a.response,
+        a.done,
+        a.done_reason,
+        a.context,
+        a.total_duration,
+        a.load_duration,
+        a.prompt_eval_count,
+        b.prompt_eval_duration,
+        b.eval_count,
+        b.eval_duration,
+      ))
+    }
+  }
 }
